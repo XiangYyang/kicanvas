@@ -19,6 +19,15 @@ export enum ViewLayerNames {
 }
 
 /**
+ * The net name layer
+ */
+export enum NetNameLayerNames {
+    pad_front = ":F.Pad:NetName",
+    pad_back = ":B.Pad:NetName",
+    pad_hole = ":All.Pad:NetName",
+}
+
+/**
  * View layers
  *
  * KiCanvas's structure uses view layers to gather schematic or board items.

@@ -144,7 +144,7 @@ export class KCBoardLayersPanelElement extends KCUIElement {
         // Presets
         this.presets_menu.addEventListener("kc-ui-menu:select", (e) => {
             const item = (e as CustomEvent).detail as KCUIMenuItemElement;
-            const ui_layers = this.viewer.layers.in_ui_order();
+            const ui_layers = this.viewer.layers.display_layers();
 
             switch (item.name) {
                 case "all":
@@ -156,6 +156,7 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                     for (const l of ui_layers) {
                         l.visible =
                             l.name.startsWith("F.") ||
+                            l.name.startsWith(":F") ||
                             l.name == LayerNames.edge_cuts;
                     }
                     break;
@@ -163,6 +164,7 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                     for (const l of ui_layers) {
                         l.visible =
                             l.name.startsWith("B.") ||
+                            l.name.startsWith(":B") ||
                             l.name == LayerNames.edge_cuts;
                     }
                     break;
@@ -170,6 +172,7 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                     for (const l of ui_layers) {
                         l.visible =
                             l.name.includes(".Cu") ||
+                            l.name.includes("NetName") ||
                             l.name == LayerNames.edge_cuts;
                     }
                     break;
@@ -178,6 +181,7 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                         l.visible =
                             l.name == LayerNames.f_cu ||
                             l.name == LayerNames.b_cu ||
+                            l.name.includes("NetName") ||
                             l.name == LayerNames.edge_cuts;
                     }
                     break;
@@ -189,6 +193,7 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                                     l.name == LayerNames.f_cu ||
                                     l.name == LayerNames.b_cu
                                 )) ||
+                            l.name.startsWith(":All") ||
                             l.name == LayerNames.edge_cuts;
                     }
                     break;
@@ -198,7 +203,8 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                             !l.name.includes(".Cu") &&
                             !l.name.includes(".Mask") &&
                             !l.name.includes(".Paste") &&
-                            !l.name.includes(".Adhes");
+                            !l.name.includes(".Adhes") &&
+                            !l.name.includes("NetName");
                     }
             }
 

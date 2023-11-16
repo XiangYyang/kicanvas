@@ -313,9 +313,9 @@ class PadPainter extends BoardItemPainter {
         // TODO: Port KiCAD's logic over.
         const layers: string[] = [];
 
-        if (pad.type === "thru_hole" || pad.type === "smd") {
+        if (pad.type === "thru_hole") {
             // Add the netname
-            layers.push(LayerNames.net_name);
+            layers.push(LayerNames.pad_net_hole);
         }
 
         for (const layer of pad.layers) {
@@ -323,8 +323,10 @@ class PadPainter extends BoardItemPainter {
                 layers.push(LayerNames.pads_front);
                 layers.push(LayerNames.pads_back);
             } else if (layer == "F.Cu") {
+                layers.push(LayerNames.pad_net_front);
                 layers.push(LayerNames.pads_front);
             } else if (layer == "B.Cu") {
+                layers.push(LayerNames.pad_net_back);
                 layers.push(LayerNames.pads_back);
             } else if (layer == "*.Mask") {
                 layers.push(LayerNames.f_mask);
@@ -368,16 +370,8 @@ class PadPainter extends BoardItemPainter {
 
         this.gfx.state.push();
 
-        if (layer.name === LayerNames.net_name) {
+        if (layer.name.includes("NetName")) {
             this.gfx.state.multiply(position_mat);
-
-            console.log(
-                "pad: ",
-                pad.parent.at.rotation,
-                pad.at.rotation,
-                "layer: ",
-                layer,
-            );
 
             this.paint_pad_netname_helper(layer, pad);
         } else {
@@ -580,12 +574,14 @@ class PadPainter extends BoardItemPainter {
                 pad.net ? -(pad_min_size_scale / 6) : 0,
             );
 
+            // The pin number font size
+            const pin_font_size = pad_min_size_scale / (pad.net ? 3 : 2);
+
             // Drawing the pin number
-            const font_size = pad_min_size_scale / 3;
             const font_attr = new TextAttributes();
             font_attr.color = Color.white.with_alpha(0.75);
-            font_attr.size = new Vec2(font_size, font_size);
-            font_attr.stroke_width = font_size < 1000 ? 100 : font_size / 8;
+            font_attr.size = new Vec2(pin_font_size, pin_font_size);
+            font_attr.stroke_width = pin_font_size / 8;
             StrokeFont.default().draw(
                 this.gfx,
                 pad.number,
@@ -601,17 +597,16 @@ class PadPainter extends BoardItemPainter {
                 const single_width = pad_display_area.x / net_name.length;
 
                 const netname_font_size = Math.min(
-                    font_size * 0.9,
+                    pin_font_size * 0.9,
                     single_width * 10000,
                 );
-                console.log(single_width);
 
                 font_attr.size = new Vec2(netname_font_size, netname_font_size);
                 font_attr.stroke_width = netname_font_size / 8;
                 StrokeFont.default().draw(
                     this.gfx,
                     net_name,
-                    new Vec2(0, font_size * 0.7),
+                    new Vec2(0, pin_font_size * 0.7),
                     font_attr,
                 );
             }
