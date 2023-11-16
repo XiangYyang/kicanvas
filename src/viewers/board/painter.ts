@@ -648,13 +648,13 @@ class PadPainter extends BoardItemPainter {
 
         const pad_angle = pad_rotating < 0 ? 360 + pad_rotating : pad_rotating;
 
-        if (rect.x > rect.y) {
-            if (pad_angle > 90 && pad_angle <= 270) {
+        if (rect.x < rect.y) {
+            angle += 90;
+            if (pad_angle > 0 && pad_angle <= 180) {
                 angle += mirror ? 180 : -180;
             }
         } else {
-            angle += 90;
-            if (pad_angle > 0 && pad_angle <= 180) {
+            if (pad_angle > 90 && pad_angle <= 270) {
                 angle += mirror ? 180 : -180;
             }
         }
