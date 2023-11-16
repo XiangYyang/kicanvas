@@ -644,16 +644,24 @@ class PadPainter extends BoardItemPainter {
         pad_rotating: number,
         rect: Vec2,
     ): [number, Vec2] {
-        // Determind the rotating angle
         let angle = -body_rotating + pad_rotating;
 
-        if (mirror) {
-            // Rotating 180° to mirror the display
-            angle += 180;
+        const pad_angle = pad_rotating < 0 ? 360 + pad_rotating : pad_rotating;
+
+        if (rect.x > rect.y) {
+            if (pad_angle > 90 && pad_angle <= 270) {
+                angle += mirror ? 180 : -180;
+            }
+        } else {
+            angle += 90;
+            if (pad_angle > 0 && pad_angle <= 180) {
+                angle += mirror ? 180 : -180;
+            }
         }
+
         // make sure that the long side is the X-axis
         if (rect.y > rect.x) {
-            return [(angle + 90) % 360, new Vec2(rect.y, rect.x)];
+            return [angle % 360, new Vec2(rect.y, rect.x)];
         } else {
             return [angle % 360, new Vec2(rect.x, rect.y)];
         }
