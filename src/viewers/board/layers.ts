@@ -39,7 +39,7 @@ export enum LayerNames {
     user_9 = "User.9",
     anchors = ":Anchors",
     non_plated_holes = ":NonPlatedHoles",
-    net_name = BaseLayerNames.net_name,
+    net_name = ":Pad:NetName",
     via_holes = ":Via:Holes",
     pad_holes = ":Pad:Holes",
     pad_holewalls = ":Pad:HoleWalls",

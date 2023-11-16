@@ -16,7 +16,6 @@ export enum ViewLayerNames {
     overlay = ":Overlay",
     drawing_sheet = ":DrawingSheet",
     grid = ":Grid",
-    net_name = ":NetName",
 }
 
 /**
