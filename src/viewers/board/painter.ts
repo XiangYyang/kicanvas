@@ -371,9 +371,27 @@ class PadPainter extends BoardItemPainter {
         this.gfx.state.push();
 
         if (layer.name.includes("NetName")) {
+            const mirror = layer.name.startsWith(":B");
+            const [text_angle, text_region] = PadPainter.rotating_tactics(
+                mirror,
+                pad.parent.at.rotation,
+                pad.at.rotation,
+                pad.size,
+            );
+            console.log(
+                layer.name,
+                pad.number,
+                text_angle,
+                "body:",
+                pad.parent.at.rotation,
+                "pad:",
+                pad.at.rotation,
+            );
+            position_mat.rotate_self(Angle.deg_to_rad(text_angle));
+
             this.gfx.state.multiply(position_mat);
 
-            this.paint_pad_netname_helper(layer, pad);
+            this.paint_pad_netname_helper(layer, pad, text_region);
         } else {
             // Rotating the pads
             position_mat.rotate_self(-Angle.deg_to_rad(pad.parent.at.rotation));
@@ -555,18 +573,23 @@ class PadPainter extends BoardItemPainter {
         }
     }
 
-    private paint_pad_netname_helper(layer: ViewLayer, pad: board_items.Pad) {
-        const pad_min_size = Math.min(pad.size.x, pad.size.y);
-        const pad_len_size = Math.max(pad.size.x, pad.size.y);
+    private paint_pad_netname_helper(
+        layer: ViewLayer,
+        pad: board_items.Pad,
+        region: Vec2,
+    ) {
+        // assert: region.y <= region.x
+        const pad_width = region.x;
+        const pad_height = region.y;
+        if (pad_width < pad_height) {
+            console.log("error:", pad);
+        }
 
-        // A rectangle with the long axis aligned to X axis
-        const pad_display_area = pad.size;
-
-        if (pad_min_size > 0.15) {
+        if (pad_height > 0.15) {
             // Drawing the net name and pin number on the pad
 
             // Scale to 10000 times the size.
-            const pad_min_size_scale = pad_min_size * 10000;
+            const pad_min_size_scale = pad_height * 10000;
 
             // Calculate the middle position of the network name and the pin number
             const net_name_center = new Vec2(
@@ -594,7 +617,7 @@ class PadPainter extends BoardItemPainter {
                 const net_name = pad.net.name;
                 // Calcuate the font size
                 // make sure that the string can be placed in the middle of the pad
-                const single_width = pad_display_area.x / net_name.length;
+                const single_width = pad_width / net_name.length;
 
                 const netname_font_size = Math.min(
                     pin_font_size * 0.9,
@@ -610,6 +633,31 @@ class PadPainter extends BoardItemPainter {
                     font_attr,
                 );
             }
+        }
+    }
+
+    /**
+     * Calcuating the rotating angle for the text, to keep that display is easier to read.
+     *
+     */
+    private static rotating_tactics(
+        mirror: boolean,
+        body_rotating: number,
+        pad_rotating: number,
+        rect: Vec2,
+    ): [number, Vec2] {
+        // Determind the rotating angle
+        let angle = -body_rotating + pad_rotating;
+
+        if (mirror) {
+            // Rotating 180° to mirror the display
+            angle += 180;
+        }
+        // make sure that the long side is the X-axis
+        if (rect.y > rect.x) {
+            return [(angle + 90) % 360, new Vec2(rect.y, rect.x)];
+        } else {
+            return [angle % 360, new Vec2(rect.x, rect.y)];
         }
     }
 }
