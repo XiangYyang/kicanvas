@@ -378,15 +378,7 @@ class PadPainter extends BoardItemPainter {
                 pad.at.rotation,
                 pad.size,
             );
-            console.log(
-                layer.name,
-                pad.number,
-                text_angle,
-                "body:",
-                pad.parent.at.rotation,
-                "pad:",
-                pad.at.rotation,
-            );
+
             position_mat.rotate_self(Angle.deg_to_rad(text_angle));
 
             this.gfx.state.multiply(position_mat);
@@ -581,9 +573,6 @@ class PadPainter extends BoardItemPainter {
         // assert: region.y <= region.x
         const pad_width = region.x;
         const pad_height = region.y;
-        if (pad_width < pad_height) {
-            console.log("error:", pad);
-        }
 
         if (pad_height > 0.15) {
             // Drawing the net name and pin number on the pad
@@ -614,7 +603,16 @@ class PadPainter extends BoardItemPainter {
 
             // Drawing the net name
             if (pad.net) {
-                const net_name = pad.net.name;
+                let net_name: string;
+                if (pad.pintype.indexOf("no_connect") !== -1) {
+                    // The pin is no connection
+                    net_name = "X";
+                } else {
+                    // Split the network name, and only display the last one
+                    const level_names = pad.net.name.split("/");
+                    net_name = level_names.slice(-1)[0]!;
+                }
+
                 // Calcuate the font size
                 // make sure that the string can be placed in the middle of the pad
                 const single_width = pad_width / net_name.length;
