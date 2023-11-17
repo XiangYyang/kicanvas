@@ -41,6 +41,69 @@ abstract class BoardItemPainter extends ItemPainter {
     }
 }
 
+/**
+ * Object with netname painter
+ */
+abstract class BoardItemNetNamePainter extends BoardItemPainter {
+    /**
+     * Drawing the netname on `center` in region `region`
+     */
+    protected paint_net_name(
+        net_name: string,
+        center: Vec2,
+        region: Vec2,
+        max_font_size: number,
+    ) {
+        const font_attr = new TextAttributes();
+
+        // White color, with 75% opacity
+        font_attr.color = Color.white.with_alpha(0.75);
+
+        // Calcuate the font size
+        // make sure that the string can be placed in the middle of the pad
+        const single_width = region.x / net_name.length;
+        const netname_font_size = Math.min(max_font_size, single_width * 10000);
+        font_attr.size = new Vec2(netname_font_size, netname_font_size);
+        font_attr.stroke_width = netname_font_size / 8;
+
+        // Drawing the text
+        StrokeFont.default().draw(this.gfx, net_name, center, font_attr);
+    }
+
+    /**
+     * Calcuating the rotating angle for the text, to keep that display is easier to read.
+     *
+     */
+    protected static text_rotating_tactics(
+        mirror: boolean,
+        body_rotating: number,
+        pad_rotating: number,
+        rect: Vec2,
+    ): [number, Vec2] {
+        let angle = -body_rotating + pad_rotating;
+
+        const pad_angle = pad_rotating < 0 ? 360 + pad_rotating : pad_rotating;
+
+        if (rect.x < rect.y) {
+            angle += 90;
+            if (pad_angle > 0 && pad_angle <= 180) {
+                angle += mirror ? 180 : -180;
+            }
+        } else {
+            if (pad_angle > 90 && pad_angle <= 270) {
+                angle += mirror ? 180 : -180;
+            }
+        }
+
+        // make sure that the long side is the X-axis
+        if (rect.y > rect.x) {
+            return [angle % 360, new Vec2(rect.y, rect.x)];
+        } else {
+            return [angle % 360, new Vec2(rect.x, rect.y)];
+        }
+    }
+}
+
 class LinePainter extends BoardItemPainter {
     classes = [board_items.GrLine, board_items.FpLine];
 
@@ -306,7 +369,7 @@ class ZonePainter extends BoardItemPainter {
     }
 }
 
-class PadPainter extends BoardItemPainter {
+class PadPainter extends BoardItemNetNamePainter {
     classes = [board_items.Pad];
 
     layers_for(pad: board_items.Pad): string[] {
@@ -372,7 +435,7 @@ class PadPainter extends BoardItemPainter {
 
         if (layer.name.includes("NetName")) {
             const mirror = layer.name.startsWith(":B");
-            const [text_angle, text_region] = PadPainter.rotating_tactics(
+            const [text_angle, text_region] = PadPainter.text_rotating_tactics(
                 mirror,
                 pad.parent.at.rotation,
                 pad.at.rotation,
@@ -397,6 +460,9 @@ class PadPainter extends BoardItemPainter {
         this.gfx.state.pop();
     }
 
+    /**
+     * Drawing the pad shape
+     */
     private paint_pad_helper(layer: ViewLayer, pad: board_items.Pad) {
         const color = layer.color;
 
@@ -565,105 +631,47 @@ class PadPainter extends BoardItemPainter {
         }
     }
 
+    /**
+     * Drawing the net name and pin number on the pad
+     */
     private paint_pad_netname_helper(
         layer: ViewLayer,
         pad: board_items.Pad,
         region: Vec2,
     ) {
-        // assert: region.y <= region.x
-        const pad_width = region.x;
-        const pad_height = region.y;
+        // Scale to 10000 times the size.
+        const pad_min_size_scale = region.y * 10000;
 
-        if (pad_height > 0.15) {
-            // Drawing the net name and pin number on the pad
+        // Calculate the middle position of the network name and the pin number
+        const net_name_center = new Vec2(
+            0,
+            pad.net ? -(pad_min_size_scale / 6) : 0,
+        );
 
-            // Scale to 10000 times the size.
-            const pad_min_size_scale = pad_height * 10000;
+        // The pin number font size
+        const pin_font_size = pad_min_size_scale / (pad.net ? 3 : 2);
 
-            // Calculate the middle position of the network name and the pin number
-            const net_name_center = new Vec2(
-                0,
-                pad.net ? -(pad_min_size_scale / 6) : 0,
+        // Drawing the pin number
+        this.paint_net_name(pad.number, net_name_center, region, pin_font_size);
+
+        // Drawing the net name
+        if (pad.net) {
+            let net_name: string;
+            if (pad.pintype.indexOf("no_connect") !== -1) {
+                // The pin is no connection
+                net_name = "X";
+            } else {
+                // Split the network name, and only display the last one
+                const level_names = pad.net.name.split("/");
+                net_name = level_names.slice(-1)[0]!;
+            }
+
+            this.paint_net_name(
+                net_name,
+                new Vec2(0, pin_font_size * 0.7),
+                region,
+                pin_font_size * 0.9,
             );
-
-            // The pin number font size
-            const pin_font_size = pad_min_size_scale / (pad.net ? 3 : 2);
-
-            // Drawing the pin number
-            const font_attr = new TextAttributes();
-            font_attr.color = Color.white.with_alpha(0.75);
-            font_attr.size = new Vec2(pin_font_size, pin_font_size);
-            font_attr.stroke_width = pin_font_size / 8;
-            StrokeFont.default().draw(
-                this.gfx,
-                pad.number,
-                net_name_center,
-                font_attr,
-            );
-
-            // Drawing the net name
-            if (pad.net) {
-                let net_name: string;
-                if (pad.pintype.indexOf("no_connect") !== -1) {
-                    // The pin is no connection
-                    net_name = "X";
-                } else {
-                    // Split the network name, and only display the last one
-                    const level_names = pad.net.name.split("/");
-                    net_name = level_names.slice(-1)[0]!;
-                }
-
-                // Calcuate the font size
-                // make sure that the string can be placed in the middle of the pad
-                const single_width = pad_width / net_name.length;
-
-                const netname_font_size = Math.min(
-                    pin_font_size * 0.9,
-                    single_width * 10000,
-                );
-
-                font_attr.size = new Vec2(netname_font_size, netname_font_size);
-                font_attr.stroke_width = netname_font_size / 8;
-                StrokeFont.default().draw(
-                    this.gfx,
-                    net_name,
-                    new Vec2(0, pin_font_size * 0.7),
-                    font_attr,
-                );
-            }
-        }
-    }
-
-    /**
-     * Calcuating the rotating angle for the text, to keep that display is easier to read.
-     *
-     */
-    private static rotating_tactics(
-        mirror: boolean,
-        body_rotating: number,
-        pad_rotating: number,
-        rect: Vec2,
-    ): [number, Vec2] {
-        let angle = -body_rotating + pad_rotating;
-
-        const pad_angle = pad_rotating < 0 ? 360 + pad_rotating : pad_rotating;
-
-        if (rect.x < rect.y) {
-            angle += 90;
-            if (pad_angle > 0 && pad_angle <= 180) {
-                angle += mirror ? 180 : -180;
-            }
-        } else {
-            if (pad_angle > 90 && pad_angle <= 270) {
-                angle += mirror ? 180 : -180;
-            }
-        }
-
-        // make sure that the long side is the X-axis
-        if (rect.y > rect.x) {
-            return [angle % 360, new Vec2(rect.y, rect.x)];
-        } else {
-            return [angle % 360, new Vec2(rect.x, rect.y)];
         }
     }
 }

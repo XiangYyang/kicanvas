@@ -157,6 +157,7 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                         l.visible =
                             l.name.startsWith("F.") ||
                             l.name.startsWith(":F") ||
+                            l.name.startsWith(":All") ||
                             l.name == LayerNames.edge_cuts;
                     }
                     break;
@@ -165,6 +166,7 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                         l.visible =
                             l.name.startsWith("B.") ||
                             l.name.startsWith(":B") ||
+                            l.name.startsWith(":All") ||
                             l.name == LayerNames.edge_cuts;
                     }
                     break;
