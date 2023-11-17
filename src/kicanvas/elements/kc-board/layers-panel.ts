@@ -106,6 +106,18 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                 layer.visible = !layer.visible;
                 item.layer_visible = layer.visible;
 
+                if (item.layer_name.includes("Cu")) {
+                    const net_layer_name = `:${item.layer_name}:Pad:NetName`;
+
+                    // the virtual layer visibility should follow the copper layer
+                    const net_layers = this.viewer.layers.query(
+                        (l) => l.name === net_layer_name,
+                    );
+                    for (const net_layer of net_layers) {
+                        net_layer.visible = layer.visible;
+                    }
+                }
+
                 // Deselect any presets, as we're no longer showing preset layers.
                 this.presets_menu.deselect();
 
@@ -119,7 +131,7 @@ export class KCBoardLayersPanelElement extends KCUIElement {
             ?.addEventListener("click", (e) => {
                 e.stopPropagation();
 
-                const ui_layers = this.viewer.layers.in_ui_order();
+                const ui_layers = this.viewer.layers.display_layers();
 
                 if (this.items.some((n) => n.layer_visible)) {
                     // hide all layers.
