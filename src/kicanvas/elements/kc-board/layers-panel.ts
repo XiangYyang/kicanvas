@@ -205,11 +205,11 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                             (l.name.includes(".Cu") &&
                                 !(
                                     l.name == LayerNames.f_cu ||
-                                    l.name == LayerNames.b_cu
+                                    l.name == LayerNames.b_cu ||
+                                    l.name.includes(":F") ||
+                                    l.name.includes(":B")
                                 )) ||
-                            (l.name.includes("NetName") &&
-                                !l.name.includes("Pad"));
-                        l.name == LayerNames.edge_cuts;
+                            l.name == LayerNames.edge_cuts;
                     }
                     break;
                 case "drawings":
