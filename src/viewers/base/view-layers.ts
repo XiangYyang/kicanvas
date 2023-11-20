@@ -22,9 +22,9 @@ export enum ViewLayerNames {
  * The net name layer
  */
 export enum NetNameLayerNames {
-    pad_front = ":F.Cu:Pad:NetName",
-    pad_back = ":B.Cu:Pad:NetName",
-    pad_hole = ":All.Pad:NetName",
+    net_front = ":F.Cu:NetName",
+    net_back = ":B.Cu:NetName",
+    net_hole = ":All:NetName",
 }
 
 /**

@@ -40,8 +40,8 @@ export enum LayerNames {
     user_9 = "User.9",
     anchors = ":Anchors",
     non_plated_holes = ":NonPlatedHoles",
-    pad_net_hole = NetNameLayerNames.pad_hole,
-    pad_net_front = NetNameLayerNames.pad_front,
+    net_name_hole = NetNameLayerNames.net_hole,
+    net_name_front = NetNameLayerNames.net_front,
     via_holes = ":Via:Holes",
     pad_holes = ":Pad:Holes",
     pad_holewalls = ":Pad:HoleWalls",
@@ -84,7 +84,7 @@ export enum LayerNames {
     in28_cu = "In28.Cu",
     in29_cu = "In29.Cu",
     in30_cu = "In30.Cu",
-    pad_net_back = NetNameLayerNames.pad_back,
+    net_name_back = NetNameLayerNames.net_back,
     pads_back = ":Pads:Back",
     b_cu = "B.Cu",
     b_mask = "B.Mask",
@@ -141,9 +141,9 @@ export const CopperLayerNames = [
 ];
 
 export const NetLayerNames = [
-    LayerNames.pad_net_back,
-    LayerNames.pad_net_front,
-    LayerNames.pad_net_hole,
+    LayerNames.net_name_back,
+    LayerNames.net_name_front,
+    LayerNames.net_name_hole,
 ];
 
 export enum CopperVirtualLayerNames {

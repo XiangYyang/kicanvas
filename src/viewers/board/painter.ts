@@ -16,7 +16,7 @@ import { Circle, Color, Polygon, Polyline, Renderer } from "../../graphics";
 import * as board_items from "../../kicad/board";
 import { EDAText, StrokeFont, TextAttributes } from "../../kicad/text";
 import { DocumentPainter, ItemPainter } from "../base/painter";
-import { ViewLayerNames } from "../base/view-layers";
+import { NetNameLayerNames, ViewLayerNames } from "../base/view-layers";
 import {
     CopperVirtualLayerNames,
     CopperLayerNames,
@@ -44,11 +44,11 @@ abstract class BoardItemPainter extends ItemPainter {
 /**
  * Object with netname painter
  */
-abstract class BoardItemNetNamePainter extends BoardItemPainter {
+abstract class BoardItemNetNamePainter<T> extends BoardItemPainter {
     /**
      * Drawing the netname on `center` in region `region`
      */
-    protected paint_net_name(
+    protected paint_net_name_text(
         net_name: string,
         center: Vec2,
         region: Vec2,
@@ -71,37 +71,18 @@ abstract class BoardItemNetNamePainter extends BoardItemPainter {
     }
 
     /**
-     * Calcuating the rotating angle for the text, to keep that display is easier to read.
-     *
+     * Drawing the element (such as pads, segments)
      */
-    protected static text_rotating_tactics(
-        mirror: boolean,
-        body_rotating: number,
-        pad_rotating: number,
-        rect: Vec2,
-    ): [number, Vec2] {
-        let angle = -body_rotating + pad_rotating;
+    protected abstract paint_element(layer: ViewLayer, element: T): void;
 
-        const pad_angle = pad_rotating < 0 ? 360 + pad_rotating : pad_rotating;
-
-        if (rect.x < rect.y) {
-            angle += 90;
-            if (pad_angle > 0 && pad_angle <= 180) {
-                angle += mirror ? 180 : -180;
-            }
-        } else {
-            if (pad_angle > 90 && pad_angle <= 270) {
-                angle += mirror ? 180 : -180;
-            }
-        }
-
-        // make sure that the long side is the X-axis
-        if (rect.y > rect.x) {
-            return [angle % 360, new Vec2(rect.y, rect.x)];
-        } else {
-            return [angle % 360, new Vec2(rect.x, rect.y)];
-        }
-    }
+    /**
+     * Drawing the net name
+     */
+    protected abstract paint_net_name(
+        layer: ViewLayer,
+        element: T,
+        region: Vec2,
+    ): void;
 }
 
 class LinePainter extends BoardItemPainter {
@@ -221,20 +202,107 @@ class CirclePainter extends BoardItemPainter {
     }
 }
 
-class TraceSegmentPainter extends BoardItemPainter {
+class TraceSegmentPainter extends BoardItemNetNamePainter<board_items.LineSegment> {
     classes = [board_items.LineSegment];
 
     layers_for(item: board_items.LineSegment) {
-        return [item.layer];
+        const net_name_layer = `:${item.layer}:NetName`;
+        if (Object.values<string>(NetNameLayerNames).includes(net_name_layer)) {
+            return [net_name_layer, item.layer];
+        } else {
+            return [item.layer];
+        }
     }
 
     paint(layer: ViewLayer, s: board_items.LineSegment) {
+        if (layer.name.includes("NetName")) {
+            const angle = TraceSegmentPainter.line_angle(s.start, s.end);
+            const begin_pos = TraceSegmentPainter.line_begin(s.start, s.end);
+            const line_length = TraceSegmentPainter.line_length(s.start, s.end);
+
+            const position_mat = Matrix3.translation(begin_pos.x, begin_pos.y);
+            position_mat.rotate_self(-angle);
+            // The center position
+            position_mat.translate_self(line_length / 2, 0);
+
+            this.gfx.state.push();
+            this.gfx.state.multiply(position_mat);
+
+            this.paint_net_name(layer, s);
+
+            this.gfx.state.pop();
+        } else {
+            this.paint_element(layer, s);
+        }
+    }
+
+    override paint_element(layer: ViewLayer, s: board_items.LineSegment) {
         if (this.filter_net && s.net != this.filter_net) {
             return;
         }
 
         const points = [s.start, s.end];
         this.gfx.line(new Polyline(points, s.width, layer.color));
+    }
+
+    override paint_net_name(layer: ViewLayer, s: board_items.LineSegment) {
+        // this.gfx.circle(new Vec2(0, 0), 0.5, Color.white);
+        // // y+: green
+        // this.gfx.circle(new Vec2(0, 1), 0.25, new Color(0, 1, 0, 1));
+        // // x+: red
+        // this.gfx.circle(new Vec2(1, 0), 0.25, new Color(1, 0, 0, 1));
+        // // y-: blue
+        // this.gfx.circle(new Vec2(0, -1), 0.25, new Color(0, 0, 1, 1));
+        // // x-: yellow
+        // this.gfx.circle(new Vec2(-1, 0), 0.25, new Color(1, 1, 0, 1));
+
+        const line_box = new Vec2(
+            TraceSegmentPainter.line_length(s.start, s.end),
+            s.width,
+        );
+
+        this.paint_net_name_text(
+            "114514",
+            new Vec2(0, 0),
+            line_box,
+            s.width * 6500,
+        );
+    }
+
+    /**
+     * Calcuate the inclination angle of a line (start -> end)
+     *
+     * The angle \in [0, 180)
+     */
+    private static line_angle(start: Vec2, end: Vec2): number {
+        const angle = Math.atan2(end.y - start.y, end.x - start.x);
+        if ((angle < 0 && angle > -Math.PI) || angle === Math.PI) {
+            return angle + Math.PI;
+        } else {
+            return angle;
+        }
+    }
+
+    /**
+     * Calcuate beginning position
+     */
+    private static line_begin(start: Vec2, end: Vec2): Vec2 {
+        const angle = Math.atan2(end.y - start.y, end.x - start.x);
+        if ((angle < 0 && angle > -Math.PI) || angle === Math.PI) {
+            // end -> start
+            return end;
+        } else {
+            // start -> end
+            return start;
+        }
+    }
+
+    /**
+     * Calcuate the line length
+     */
+    private static line_length(start: Vec2, end: Vec2): number {
+        const dir_vec = new Vec2(end.x - start.x, end.y - start.y);
+        return dir_vec.magnitude;
     }
 }
 
@@ -369,7 +437,7 @@ class ZonePainter extends BoardItemPainter {
     }
 }
 
-class PadPainter extends BoardItemNetNamePainter {
+class PadPainter extends BoardItemNetNamePainter<board_items.Pad> {
     classes = [board_items.Pad];
 
     layers_for(pad: board_items.Pad): string[] {
@@ -378,7 +446,7 @@ class PadPainter extends BoardItemNetNamePainter {
 
         if (pad.type === "thru_hole") {
             // Add the netname
-            layers.push(LayerNames.pad_net_hole);
+            layers.push(LayerNames.net_name_hole);
         }
 
         for (const layer of pad.layers) {
@@ -386,10 +454,10 @@ class PadPainter extends BoardItemNetNamePainter {
                 layers.push(LayerNames.pads_front);
                 layers.push(LayerNames.pads_back);
             } else if (layer == "F.Cu") {
-                layers.push(LayerNames.pad_net_front);
+                layers.push(LayerNames.net_name_front);
                 layers.push(LayerNames.pads_front);
             } else if (layer == "B.Cu") {
-                layers.push(LayerNames.pad_net_back);
+                layers.push(LayerNames.net_name_back);
                 layers.push(LayerNames.pads_back);
             } else if (layer == "*.Mask") {
                 layers.push(LayerNames.f_mask);
@@ -446,7 +514,7 @@ class PadPainter extends BoardItemNetNamePainter {
 
             this.gfx.state.multiply(position_mat);
 
-            this.paint_pad_netname_helper(layer, pad, text_region);
+            this.paint_net_name(layer, pad, text_region);
         } else {
             // Rotating the pads
             position_mat.rotate_self(-Angle.deg_to_rad(pad.parent.at.rotation));
@@ -454,7 +522,7 @@ class PadPainter extends BoardItemNetNamePainter {
 
             this.gfx.state.multiply(position_mat);
 
-            this.paint_pad_helper(layer, pad);
+            this.paint_element(layer, pad);
         }
 
         this.gfx.state.pop();
@@ -463,7 +531,7 @@ class PadPainter extends BoardItemNetNamePainter {
     /**
      * Drawing the pad shape
      */
-    private paint_pad_helper(layer: ViewLayer, pad: board_items.Pad) {
+    override paint_element(layer: ViewLayer, pad: board_items.Pad) {
         const color = layer.color;
 
         const center = new Vec2(0, 0);
@@ -634,7 +702,7 @@ class PadPainter extends BoardItemNetNamePainter {
     /**
      * Drawing the net name and pin number on the pad
      */
-    private paint_pad_netname_helper(
+    override paint_net_name(
         layer: ViewLayer,
         pad: board_items.Pad,
         region: Vec2,
@@ -652,7 +720,12 @@ class PadPainter extends BoardItemNetNamePainter {
         const pin_font_size = pad_min_size_scale / (pad.net ? 3 : 2);
 
         // Drawing the pin number
-        this.paint_net_name(pad.number, net_name_center, region, pin_font_size);
+        this.paint_net_name_text(
+            pad.number,
+            net_name_center,
+            region,
+            pin_font_size,
+        );
 
         // Drawing the net name
         if (pad.net) {
@@ -666,12 +739,45 @@ class PadPainter extends BoardItemNetNamePainter {
                 net_name = level_names.slice(-1)[0]!;
             }
 
-            this.paint_net_name(
+            this.paint_net_name_text(
                 net_name,
                 new Vec2(0, pin_font_size * 0.7),
                 region,
                 pin_font_size * 0.9,
             );
+        }
+    }
+
+    /**
+     * Calcuating the rotating angle for the text, to keep that display is easier to read.
+     *
+     */
+    private static text_rotating_tactics(
+        mirror: boolean,
+        body_rotating: number,
+        pad_rotating: number,
+        rect: Vec2,
+    ): [number, Vec2] {
+        let angle = -body_rotating + pad_rotating;
+
+        const pad_angle = pad_rotating < 0 ? 360 + pad_rotating : pad_rotating;
+
+        if (rect.x < rect.y) {
+            angle += 90;
+            if (pad_angle > 0 && pad_angle <= 180) {
+                angle += mirror ? 180 : -180;
+            }
+        } else {
+            if (pad_angle > 90 && pad_angle <= 270) {
+                angle += mirror ? 180 : -180;
+            }
+        }
+
+        // make sure that the long side is the X-axis
+        if (rect.y > rect.x) {
+            return [angle % 360, new Vec2(rect.y, rect.x)];
+        } else {
+            return [angle % 360, new Vec2(rect.x, rect.y)];
         }
     }
 }
