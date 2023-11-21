@@ -46,11 +46,12 @@ abstract class BoardItemNetNamePainter<T> extends BoardItemPainter {
         center: Vec2,
         region: Vec2,
         max_font_size: number,
+        color: Color = Color.white.with_alpha(0.75),
     ) {
         const font_attr = new TextAttributes();
 
         // White color, with 75% opacity
-        font_attr.color = Color.white.with_alpha(0.75);
+        font_attr.color = color;
 
         // Calcuate the font size
         // make sure that the string can be placed in the middle of the pad
@@ -436,6 +437,7 @@ class ViaPainter extends BoardItemNetNamePainter<board_items.Via> {
             new Vec2(0, 0),
             via_box,
             via_box.x * 6500,
+            Color.black.with_alpha(0.75),
         );
     }
 }
