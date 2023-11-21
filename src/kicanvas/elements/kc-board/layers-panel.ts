@@ -195,7 +195,8 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                         l.visible =
                             l.name == LayerNames.f_cu ||
                             l.name == LayerNames.b_cu ||
-                            l.name.includes("NetName") ||
+                            l.name.includes(":F") ||
+                            l.name.includes(":B") ||
                             l.name == LayerNames.edge_cuts;
                     }
                     break;

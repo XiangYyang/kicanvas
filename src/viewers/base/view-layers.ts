@@ -23,6 +23,7 @@ export enum ViewLayerNames {
  */
 export enum NetNameLayerNames {
     net_front = ":F.Cu:NetName",
+    net_in1 = ":In1.Cu:NetName",
     net_back = ":B.Cu:NetName",
     net_hole = ":All:NetName",
 }

@@ -54,6 +54,7 @@ export enum LayerNames {
     f_paste = "F.Paste",
     f_crtyd = "F.CrtYd",
     f_fab = "F.Fab",
+    net_in1 = NetNameLayerNames.net_in1,
     in1_cu = "In1.Cu",
     in2_cu = "In2.Cu",
     in3_cu = "In3.Cu",
@@ -144,6 +145,7 @@ export const NetLayerNames = [
     LayerNames.net_name_back,
     LayerNames.net_name_front,
     LayerNames.net_name_hole,
+    LayerNames.net_in1,
 ];
 
 export enum CopperVirtualLayerNames {

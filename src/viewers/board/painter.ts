@@ -256,17 +256,18 @@ class TraceSegmentPainter extends BoardItemNetNamePainter<board_items.LineSegmen
         // // x-: yellow
         // this.gfx.circle(new Vec2(-1, 0), 0.25, new Color(1, 1, 0, 1));
 
-        const line_box = new Vec2(
-            TraceSegmentPainter.line_length(s.start, s.end),
-            s.width,
-        );
+        const line_len = TraceSegmentPainter.line_length(s.start, s.end);
+        const line_box = new Vec2(line_len, s.width);
+        const net_name = "114514";
 
-        this.paint_net_name_text(
-            "114514",
-            new Vec2(0, 0),
-            line_box,
-            s.width * 6500,
-        );
+        if (line_len / net_name.length > s.width) {
+            this.paint_net_name_text(
+                net_name,
+                new Vec2(0, 0),
+                line_box,
+                s.width * 6500,
+            );
+        }
     }
 
     /**
