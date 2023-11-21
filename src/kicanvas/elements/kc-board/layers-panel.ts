@@ -11,6 +11,7 @@ import {
     type KCUIMenuItemElement,
     type KCUIPanelBodyElement,
 } from "../../../kc-ui";
+import * as Layers from "../../../viewers/board/layers";
 import { LayerNames, LayerSet } from "../../../viewers/board/layers";
 import { BoardViewer } from "../../../viewers/board/viewer";
 
@@ -107,7 +108,10 @@ export class KCBoardLayersPanelElement extends KCUIElement {
                 item.layer_visible = layer.visible;
 
                 if (item.layer_name.includes("Cu")) {
-                    const net_layer_name = `:${item.layer_name}:Pad:NetName`;
+                    const net_layer_name = Layers.virtual_layer_for(
+                        item.layer_name,
+                        Layers.CopperVirtualLayerNames.copper_net_name,
+                    );
 
                     // the virtual layer visibility should follow the copper layer
                     const net_layers = this.viewer.layers.query(

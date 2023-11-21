@@ -17,15 +17,8 @@ import * as board_items from "../../kicad/board";
 import { EDAText, StrokeFont, TextAttributes } from "../../kicad/text";
 import { DocumentPainter, ItemPainter } from "../base/painter";
 import { NetNameLayerNames, ViewLayerNames } from "../base/view-layers";
-import {
-    CopperVirtualLayerNames,
-    CopperLayerNames,
-    LayerNames,
-    LayerSet,
-    ViewLayer,
-    copper_layers_between,
-    virtual_layer_for,
-} from "./layers";
+import * as Layers from "./layers";
+import { ViewLayer, LayerNames } from "./layers";
 import type { BoardTheme } from "../../kicad";
 
 abstract class BoardItemPainter extends ItemPainter {
@@ -206,7 +199,10 @@ class TraceSegmentPainter extends BoardItemNetNamePainter<board_items.LineSegmen
     classes = [board_items.LineSegment];
 
     layers_for(item: board_items.LineSegment) {
-        const net_name_layer = `:${item.layer}:NetName`;
+        const net_name_layer = Layers.virtual_layer_for(
+            item.layer,
+            Layers.CopperVirtualLayerNames.copper_net_name,
+        );
         if (Object.values<string>(NetNameLayerNames).includes(net_name_layer)) {
             return [net_name_layer, item.layer];
         } else {
@@ -236,7 +232,7 @@ class TraceSegmentPainter extends BoardItemNetNamePainter<board_items.LineSegmen
         }
     }
 
-    override paint_element(layer: ViewLayer, s: board_items.LineSegment) {
+    paint_element(layer: ViewLayer, s: board_items.LineSegment) {
         if (this.filter_net && s.net != this.filter_net) {
             return;
         }
@@ -245,20 +241,10 @@ class TraceSegmentPainter extends BoardItemNetNamePainter<board_items.LineSegmen
         this.gfx.line(new Polyline(points, s.width, layer.color));
     }
 
-    override paint_net_name(layer: ViewLayer, s: board_items.LineSegment) {
-        // this.gfx.circle(new Vec2(0, 0), 0.5, Color.white);
-        // // y+: green
-        // this.gfx.circle(new Vec2(0, 1), 0.25, new Color(0, 1, 0, 1));
-        // // x+: red
-        // this.gfx.circle(new Vec2(1, 0), 0.25, new Color(1, 0, 0, 1));
-        // // y-: blue
-        // this.gfx.circle(new Vec2(0, -1), 0.25, new Color(0, 0, 1, 1));
-        // // x-: yellow
-        // this.gfx.circle(new Vec2(-1, 0), 0.25, new Color(1, 1, 0, 1));
-
+    paint_net_name(layer: ViewLayer, s: board_items.LineSegment) {
         const line_len = TraceSegmentPainter.line_length(s.start, s.end);
         const line_box = new Vec2(line_len, s.width);
-        const net_name = "114514";
+        const net_name = `net:${s.net}`;
 
         if (line_len / net_name.length > s.width) {
             this.paint_net_name_text(
@@ -325,7 +311,7 @@ class TraceArcPainter extends BoardItemPainter {
     }
 }
 
-class ViaPainter extends BoardItemPainter {
+class ViaPainter extends BoardItemNetNamePainter<board_items.Via> {
     classes = [board_items.Via];
 
     layers_for(v: board_items.Via): string[] {
@@ -334,22 +320,50 @@ class ViaPainter extends BoardItemPainter {
             // and should only be drawn on the layers they're actually on.
             const layers = [];
 
-            for (const cu_layer of copper_layers_between(
+            for (const cu_layer of Layers.copper_layers_between(
                 v.layers[0]!,
                 v.layers[1]!,
             )) {
                 layers.push(
-                    virtual_layer_for(
+                    Layers.virtual_layer_for(
                         cu_layer,
-                        CopperVirtualLayerNames.bb_via_holes,
+                        Layers.CopperVirtualLayerNames.bb_via_holes,
                     ),
                 );
                 layers.push(
-                    virtual_layer_for(
+                    Layers.virtual_layer_for(
                         cu_layer,
-                        CopperVirtualLayerNames.bb_via_hole_walls,
+                        Layers.CopperVirtualLayerNames.bb_via_hole_walls,
                     ),
                 );
+            }
+            // Add the netname virtual names
+            if (v.type === "through-hole") {
+                // For the through-hole via, add the front and the back layers
+                layers.push(
+                    Layers.virtual_layer_for(
+                        "F.Cu",
+                        Layers.CopperVirtualLayerNames.copper_net_name,
+                    ),
+                );
+                layers.push(
+                    Layers.virtual_layer_for(
+                        "B.Cu",
+                        Layers.CopperVirtualLayerNames.copper_net_name,
+                    ),
+                );
+            } else {
+                for (const cu_layer of Layers.copper_layers_between(
+                    v.layers[0]!,
+                    v.layers[1]!,
+                )) {
+                    layers.push(
+                        Layers.virtual_layer_for(
+                            cu_layer,
+                            Layers.CopperVirtualLayerNames.copper_net_name,
+                        ),
+                    );
+                }
             }
             return layers;
         } else {
@@ -358,6 +372,24 @@ class ViaPainter extends BoardItemPainter {
     }
 
     paint(layer: ViewLayer, v: board_items.Via) {
+        if (layer.name.includes("NetName")) {
+            const position_mat = Matrix3.translation(
+                v.at.position.x,
+                v.at.position.y,
+            );
+
+            this.gfx.state.push();
+            this.gfx.state.multiply(position_mat);
+
+            this.paint_net_name(layer, v);
+
+            this.gfx.state.pop();
+        } else {
+            this.paint_element(layer, v);
+        }
+    }
+
+    paint_element(layer: ViewLayer, v: board_items.Via) {
         if (this.filter_net && v.net != this.filter_net) {
             return;
         }
@@ -394,6 +426,18 @@ class ViaPainter extends BoardItemPainter {
             }
         }
     }
+
+    paint_net_name(layer: ViewLayer, v: board_items.Via) {
+        const via_box = new Vec2(v.size, v.size);
+        const net_name = `net:${v.net}`;
+
+        this.paint_net_name_text(
+            net_name,
+            new Vec2(0, 0),
+            via_box,
+            via_box.x * 6500,
+        );
+    }
 }
 
 class ZonePainter extends BoardItemPainter {
@@ -408,8 +452,11 @@ class ZonePainter extends BoardItemPainter {
         }
 
         return layers.map((l) => {
-            if (CopperLayerNames.includes(l as LayerNames)) {
-                return virtual_layer_for(l, CopperVirtualLayerNames.zones);
+            if (Layers.CopperLayerNames.includes(l as LayerNames)) {
+                return Layers.virtual_layer_for(
+                    l,
+                    Layers.CopperVirtualLayerNames.zones,
+                );
             } else {
                 return l;
             }
@@ -532,7 +579,7 @@ class PadPainter extends BoardItemNetNamePainter<board_items.Pad> {
     /**
      * Drawing the pad shape
      */
-    override paint_element(layer: ViewLayer, pad: board_items.Pad) {
+    paint_element(layer: ViewLayer, pad: board_items.Pad) {
         const color = layer.color;
 
         const center = new Vec2(0, 0);
@@ -703,11 +750,7 @@ class PadPainter extends BoardItemNetNamePainter<board_items.Pad> {
     /**
      * Drawing the net name and pin number on the pad
      */
-    override paint_net_name(
-        layer: ViewLayer,
-        pad: board_items.Pad,
-        region: Vec2,
-    ) {
+    paint_net_name(layer: ViewLayer, pad: board_items.Pad, region: Vec2) {
         // Scale to 10000 times the size.
         const pad_min_size_scale = region.y * 10000;
 
@@ -1211,7 +1254,7 @@ class FootprintPainter extends BoardItemPainter {
 export class BoardPainter extends DocumentPainter {
     override theme: BoardTheme;
 
-    constructor(gfx: Renderer, layers: LayerSet, theme: BoardTheme) {
+    constructor(gfx: Renderer, layers: Layers.LayerSet, theme: BoardTheme) {
         super(gfx, layers, theme);
         this.painter_list = [
             new LinePainter(this, gfx),
