@@ -32,15 +32,15 @@ enum Kind {
 
 type ListOrAtom = number | string | List;
 type Obj = Record<string, any>;
-type Item = {
-    new (e: Parseable, ...args: any[]): any;
+type Item<T = any> = {
+    new (e: Parseable, ...args: any[]): T;
 };
-type TypeProcessor = (obj: Obj, name: string, e: ListOrAtom) => any;
-type PropertyDefinition = {
+type TypeProcessor<T = any> = (obj: Obj, name: string, e: ListOrAtom) => T;
+type PropertyDefinition<T = any> = {
     name: string;
     kind: Kind;
     accepts?: string[];
-    fn: TypeProcessor;
+    fn: TypeProcessor<T>;
 };
 
 /**
@@ -78,8 +78,8 @@ export const T = {
             return undefined;
         }
     },
-    item(type: Item, ...args: any[]): TypeProcessor {
-        return (obj: Obj, name: string, e: ListOrAtom): any => {
+    item<T>(type: Item<T>, ...args: any[]): TypeProcessor<T> {
+        return (obj: Obj, name: string, e: ListOrAtom) => {
             return new type(e as Parseable, ...args);
         };
     },
@@ -187,12 +187,12 @@ export const P = {
      * ((a key1 1) (a key2 2) (a key3 3)) with collection_map("items", "a")
      * would end up with {items: {key1: [a, key1, 2], ...}.
      */
-    mapped_collection(
+    mapped_collection<K, V>(
         name: string,
         accept: string,
-        keyfn: (obj: any) => string,
-        typefn: TypeProcessor = T.any,
-    ): PropertyDefinition {
+        keyfn: (obj: V) => K,
+        typefn: TypeProcessor<V> = T.any,
+    ): PropertyDefinition<Map<K, V>> {
         return {
             kind: Kind.item_list,
             name: name,

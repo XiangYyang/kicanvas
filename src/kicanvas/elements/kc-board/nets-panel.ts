@@ -55,12 +55,12 @@ export class KCBoardNetsPanelElement extends KCUIElement {
 
         const nets = [];
 
-        for (const net of board.nets) {
+        for (const [number, net] of board.nets.entries()) {
             nets.push(
                 html`<kc-ui-menu-item
-                    name="${net.number}"
-                    data-match-text="${net.number} ${net.name}">
-                    <span class="very-narrow"> ${net.number} </span>
+                    name="${number}"
+                    data-match-text="${number} ${net.name}">
+                    <span class="very-narrow"> ${number} </span>
                     <span>${net.name}</span>
                 </kc-ui-menu-item>`,
             );

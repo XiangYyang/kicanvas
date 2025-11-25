@@ -88,8 +88,8 @@ suite("kicad.board.KicadPCB(): board parsing", function () {
             outputdirectory: "",
         });
 
-        assert.equal(pcb.nets.length, 1);
-        assert.deepInclude(pcb.nets[0], { number: 0, name: "" });
+        assert.equal(pcb.nets.size, 1);
+        assert.deepInclude(pcb.nets.get(0), { number: 0, name: "" });
     });
 
     test("with title block and properties", function () {
@@ -365,10 +365,10 @@ suite("kicad.board.KicadPCB(): board parsing", function () {
     test("with traces", function () {
         const pcb = new board.KicadPCB("test.kicad_pcb", traces_pcb_src);
 
-        assert.equal(pcb.nets.length, 3);
-        assert.include(pcb.nets[0], { number: 0, name: "" });
-        assert.include(pcb.nets[1], { number: 1, name: "one" });
-        assert.include(pcb.nets[2], { number: 2, name: "two" });
+        assert.equal(pcb.nets.size, 3);
+        assert.include(pcb.nets.get(0), { number: 0, name: "" });
+        assert.include(pcb.nets.get(1), { number: 1, name: "one" });
+        assert.include(pcb.nets.get(2), { number: 2, name: "two" });
 
         assert.equal(pcb.segments.length, 7);
         assert.deepInclude(pcb.segments[0], {

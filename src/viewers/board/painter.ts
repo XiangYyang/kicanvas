@@ -146,6 +146,8 @@ abstract class GraphicItemPainter extends BoardItemPainter {
     }
 }
 
+abstract class NetNameItemPainter extends BoardItemPainter {}
+
 class LinePainter extends GraphicItemPainter {
     classes = [board_items.GrLine, board_items.FpLine];
 
@@ -273,7 +275,7 @@ class CirclePainter extends GraphicItemPainter {
     }
 }
 
-class TraceSegmentPainter extends BoardItemPainter {
+class TraceSegmentPainter extends NetNameItemPainter {
     classes = [board_items.LineSegment];
 
     layers_for(item: board_items.LineSegment) {
@@ -290,7 +292,7 @@ class TraceSegmentPainter extends BoardItemPainter {
     }
 }
 
-class TraceArcPainter extends BoardItemPainter {
+class TraceArcPainter extends NetNameItemPainter {
     classes = [board_items.ArcSegment];
 
     layers_for(item: board_items.ArcSegment) {
@@ -308,7 +310,7 @@ class TraceArcPainter extends BoardItemPainter {
     }
 }
 
-class ViaPainter extends BoardItemPainter {
+class ViaPainter extends NetNameItemPainter {
     classes = [board_items.Via];
 
     layers_for(v: board_items.Via): string[] {
@@ -421,7 +423,7 @@ class ZonePainter extends BoardItemPainter {
     }
 }
 
-class PadPainter extends BoardItemPainter {
+class PadPainter extends NetNameItemPainter {
     classes = [board_items.Pad];
 
     layers_for(pad: board_items.Pad): string[] {

@@ -66,7 +66,7 @@ export class KCBoardInfoPanelElement extends KCUIElement {
                             ${board_bbox.h.toFixed(1)} mm`,
                         )}
                         ${entry("Footprints", board.footprints.length)}
-                        ${entry("Nets", board.nets.length)}
+                        ${entry("Nets", board.nets.size)}
                         ${entry("Track segments", board.segments.length)}
                         ${entry("Vias", board.vias.length)}
                         ${entry("Zones", board.zones.length)}
