@@ -452,12 +452,21 @@ class PadPainter extends NetNameItemPainter {
         switch (pad.type) {
             case "thru_hole":
                 layers.push(LayerNames.pad_holewalls);
+                layers.push(LayerNames.pad_holes_netname);
                 layers.push(LayerNames.pad_holes);
                 break;
             case "np_thru_hole":
                 layers.push(LayerNames.non_plated_holes);
                 break;
             case "smd":
+                // only use pads_front_netname/pads_back_netname in SMD pads
+                // the thru_hole pad uses the pad_holes_netname layer
+                if (layers.includes(LayerNames.pads_front)) {
+                    layers.push(LayerNames.pads_front_netname);
+                } else if (layers.includes(LayerNames.pads_back)) {
+                    layers.push(LayerNames.pads_back_netname);
+                }
+                break;
             case "connect":
                 break;
             default:
@@ -491,7 +500,16 @@ class PadPainter extends NetNameItemPainter {
             layer.name == LayerNames.pad_holes ||
             layer.name == LayerNames.non_plated_holes;
 
-        if (is_hole_layer && pad.drill != null) {
+        const is_netname_layer =
+            layer.name == LayerNames.pads_front_netname ||
+            layer.name == LayerNames.pads_back_netname ||
+            layer.name == LayerNames.pad_holes_netname;
+
+        const net_name = pad.displayed_netname;
+
+        if (is_netname_layer && net_name !== undefined) {
+            // TODO
+        } else if (is_hole_layer && pad.drill != null) {
             if (!pad.drill.oval) {
                 const drill_pos = center.add(pad.drill.offset);
                 this.gfx.circle(
