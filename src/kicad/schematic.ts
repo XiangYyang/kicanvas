@@ -864,7 +864,9 @@ export class LibSymbol {
     };
     in_bom = false;
     on_board = false;
+    in_pos_files = true;
     exclude_from_sim = false;
+    duplicate_pin_numbers_are_jumpers = false;
     properties: Map<string, Property> = new Map();
     children: LibSymbol[] = [];
     drawings: Drawing[] = [];
@@ -896,6 +898,8 @@ export class LibSymbol {
                 ),
                 P.pair("in_bom", T.boolean),
                 P.pair("on_board", T.boolean),
+                P.pair("in_pos_files", T.boolean),
+                P.pair("duplicate_pin_numbers_are_jumpers", T.boolean),
                 P.pair("exclude_from_sim", T.boolean),
                 P.mapped_collection(
                     "properties",
@@ -1060,6 +1064,7 @@ export class Property {
     text: string;
     id: number;
     at: At;
+    hide = false;
     show_name = false;
     do_not_autoplace = false;
     #effects?: Effects;
@@ -1074,6 +1079,7 @@ export class Property {
             P.positional("name", T.string),
             P.positional("text", T.string),
             P.pair("id", T.number),
+            P.pair("hide", T.boolean),
             P.item("at", At),
             P.item("effects", Effects),
             P.atom("show_name"),
@@ -1082,6 +1088,17 @@ export class Property {
 
         this.#effects = parsed["effects"];
         delete parsed["effects"];
+
+        // KiCad 10 (ver 20260306)
+        // (property "ki_fp_filters" "R_*"
+        //    (at 0 0 0)
+        //    (hide yes))
+        // KiCad 9 and 8
+        // (property "ki_keywords" "quartz ceramic resonator oscillator"
+        //   (at 0 0 0)
+        //   (effects
+        //     (hide yes)))
+        this.hide = this.hide || (this.#effects?.hide ?? false);
 
         Object.assign(this, parsed);
     }

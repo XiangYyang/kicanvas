@@ -389,7 +389,7 @@ class PropertyPainter extends SchematicItemPainter {
     }
 
     paint(layer: ViewLayer, p: schematic_items.Property) {
-        if (p.effects.hide || !p.text) {
+        if (p.hide || !p.text) {
             return;
         }
 
