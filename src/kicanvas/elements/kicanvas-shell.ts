@@ -13,7 +13,7 @@ import { sprites_url } from "../icons/sprites";
 import { Project } from "../project";
 import { GitHubFileSystem } from "../services/github-vfs";
 import { CodebergFileSystem } from "../services/codeberg-vfs";
-import { FetchFileSystem, type VirtualFileSystem } from "../services/vfs";
+import { FetchFileSystem, type IFileSystem } from "../services/vfs";
 import { KCBoardAppElement } from "./kc-board/app";
 import { KCSchematicAppElement } from "./kc-schematic/app";
 
@@ -88,6 +88,9 @@ class KiCanvasShellElement extends KCUIElement {
             ...url_params.getAll("repo"),
         ];
 
+        // Only load the first URL
+        const url = urls[0];
+
         later(async () => {
             if (this.src) {
                 const vfs = new FetchFileSystem([this.src]);
@@ -95,8 +98,8 @@ class KiCanvasShellElement extends KCUIElement {
                 return;
             }
 
-            if (urls.length) {
-                const vfs = await this.load_repo(...urls);
+            if (url) {
+                const vfs = await this.load_repo(url);
                 if (!vfs) {
                     return;
                 }
@@ -134,20 +137,19 @@ class KiCanvasShellElement extends KCUIElement {
         });
     }
 
-    private async load_repo(
-        ...url: string[]
-    ): Promise<VirtualFileSystem | null> {
+    private async load_repo(url: string): Promise<IFileSystem | null> {
         return (
-            (await GitHubFileSystem.fromURLs(...url)) ??
-            (await CodebergFileSystem.fromURLs(...url))
+            (await GitHubFileSystem.fromURLs(url)) ??
+            (await CodebergFileSystem.fromURLs(url))
         );
     }
 
-    private async setup_project(vfs: VirtualFileSystem) {
+    private async setup_project(vfs: IFileSystem) {
         this.loaded = false;
         this.loading = true;
 
         try {
+            await vfs.setup();
             await this.project.load(vfs);
             this.project.set_active_page(this.project.first_page);
             this.loaded = true;

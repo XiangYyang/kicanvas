@@ -9,18 +9,19 @@ import { Barrier } from "../base/async";
 import { type IDisposable } from "../base/disposable";
 import { first, length, map } from "../base/iterator";
 import { Logger } from "../base/log";
+import { dirname, normalize_join } from "../base/paths";
 import { is_string, type Constructor } from "../base/types";
 import { KicadPCB, KicadSch, ProjectSettings } from "../kicad";
 import type {
     SchematicSheet,
     SchematicSheetInstance,
 } from "../kicad/schematic";
-import type { VirtualFileSystem } from "./services/vfs";
+import type { IFileSystem } from "./services/vfs";
 
 const log = new Logger("kicanvas:project");
 
 export class Project extends EventTarget implements IDisposable {
-    #fs: VirtualFileSystem;
+    #fs: IFileSystem;
     #files_by_name: Map<string, KicadPCB | KicadSch | null> = new Map();
     #pages_by_path: Map<string, ProjectPage> = new Map();
     #root_schematic_page?: ProjectPage;
@@ -33,7 +34,7 @@ export class Project extends EventTarget implements IDisposable {
         this.#pages_by_path.clear();
     }
 
-    public async load(fs: VirtualFileSystem) {
+    public async load(fs: IFileSystem) {
         log.info(`Loading project from ${fs.constructor.name}`);
 
         this.settings = new ProjectSettings();
@@ -42,30 +43,53 @@ export class Project extends EventTarget implements IDisposable {
 
         this.#fs = fs;
 
-        let promises = [];
+        const proj_promises = [];
 
+        // load project file
         for (const filename of this.#fs.list()) {
-            promises.push(this.#load_file(filename));
+            proj_promises.push(this.#load_file(filename));
         }
 
-        await Promise.all(promises);
+        await Promise.all(proj_promises);
 
-        while (promises.length) {
-            // 'Recursively' resolve all schematics until none remain
-            promises = [];
-            for (const schematic of this.schematics()) {
-                for (const sheet of schematic.sheets) {
-                    const sheet_sch = this.#files_by_name.get(
-                        sheet.sheetfile ?? "",
-                    ) as KicadSch;
+        // 'Recursively' resolve all schematics until none remain
+        let load_new = true;
+        const skipped_files: string[] = [];
+        while (load_new) {
+            load_new = false;
 
-                    if (!sheet_sch && sheet.sheetfile) {
-                        // Missing schematic, attempt to fetch
-                        promises.push(this.#load_file(sheet.sheetfile));
+            const loaded_file = Array.from(this.schematics());
+            for (const sch of loaded_file) {
+                const base_dir = dirname(sch.filename);
+                for (const subsch of sch.sheets) {
+                    if (!subsch.sheetfile) {
+                        continue;
+                    }
+
+                    const new_file = normalize_join(base_dir, subsch.sheetfile);
+
+                    const loaded = loaded_file.map((s) => s.filename);
+                    if (
+                        loaded.includes(new_file) ||
+                        skipped_files.includes(new_file)
+                    ) {
+                        // file loaded or skipped
+                        continue;
+                    }
+
+                    load_new = true;
+
+                    if (await this.#fs.has(new_file)) {
+                        // load file, it changes this.#files_by_name and causes calling
+                        // this.schematics() will return a new result.
+                        await this.#load_file(new_file);
+                    } else {
+                        // skip non-existent files to allow loading an incomplete schematics
+                        skipped_files.push(new_file);
+                        log.warn(`file "${new_file}" is not existed, skip it.`);
                     }
                 }
             }
-            await Promise.all(promises);
         }
 
         this.#determine_schematic_hierarchy();
@@ -251,6 +275,10 @@ export class Project extends EventTarget implements IDisposable {
 
         // Finally, if no root schematic was found, just use the first one we saw.
         this.#root_schematic_page = first(this.#pages_by_path.values());
+
+        if (!this.#root_schematic_page) {
+            log.error("No vaild root schematic was found.");
+        }
     }
 
     public *files() {
